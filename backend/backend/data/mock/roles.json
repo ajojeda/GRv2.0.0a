@@ -1,0 +1,35 @@
+{
+  "id": 1,
+  "name": "SysAdmin",
+  "siteId": "global",
+  "permissions": {
+    "Dashboard": {
+      "visible": true,
+      "actions": {}
+    },
+    "User Management": {
+      "visible": true,
+      "actions": {
+        "Create User": true,
+        "Edit User": true,
+        "Delete User": true
+      },
+      "fields": {
+        "email": "read/write",
+        "role": "read/write"
+      }
+    },
+    "Site Management": {
+      "visible": true,
+      "actions": {
+        "Edit Site": true
+      }
+    },
+    "Role Management": {
+      "visible": true,
+      "actions": {
+        "Edit Role": true
+      }
+    }
+  }
+}
