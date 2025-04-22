@@ -1,0 +1,11 @@
+[
+  {
+    "id": 1,
+    "email": "admin@goodierun.com",
+    "name": "System Admin",
+    "sysAdmin": true,
+    "role": "System Admin",
+    "siteId": 5,
+    "siteAccess": [5]
+  }
+]

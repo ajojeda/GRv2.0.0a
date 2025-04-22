@@ -1,0 +1,20 @@
+[
+    {
+      "id": 1,
+      "name": "Site Admin",
+      "description": "Can manage all users and settings",
+      "siteId": 5
+    },
+    {
+      "id": 2,
+      "name": "Maintenance Lead",
+      "description": "Handles daily operational tasks",
+      "siteId": 6
+    },
+    {
+      "id": 3,
+      "name": "Support Staff",
+      "description": "Limited task visibility",
+      "siteId": 5
+    }
+  ]
