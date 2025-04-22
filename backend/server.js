@@ -92,7 +92,7 @@ function getSysAdminPermissions() {
 // --- Auth Endpoints ---
 app.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
-  console.log("🔐 Login attempt:", { email, password });
+  console.log("🔐 Login attempt received:", { email, password });
 
   if (!email || !password) {
     return res.status(400).json({ message: "Missing credentials" });
@@ -109,18 +109,32 @@ app.post("/auth/login", async (req, res) => {
         WHERE LOWER(email) = @email
       `);
 
+    console.log("📦 SQL result for login:", result.recordset);
+
     const user = result.recordset[0];
     if (!user) {
-      console.warn("⚠️ User not found for email:", email);
+      console.warn("❌ No user found for email:", email);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    if (user.password !== password) {
-      console.warn("⚠️ Incorrect password for:", user.email);
+    if (!user.password) {
+      console.warn("❌ User found but password is missing in DB:", user.email);
+      return res.status(401).json({ message: "Missing password in database" });
+    }
+
+    console.log("🔍 Password comparison...");
+    console.log("👉 Submitted password:", password, "→ type:", typeof password);
+    console.log("🔒 Stored password:", user.password, "→ type:", typeof user.password);
+
+    const passwordsMatch = user.password === password;
+    console.log("✅ Passwords match?", passwordsMatch);
+
+    if (!passwordsMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const userWithPermissions = await getUserWithPermissions(user.id);
+    console.log("✅ Successful login for:", user.email);
 
     return res
       .cookie("refreshToken", String(user.id), {
@@ -152,7 +166,8 @@ app.post("/auth/refresh", async (req, res) => {
       user: userWithPermissions,
       permissions: userWithPermissions.permissions,
     });
-  } catch {
+  } catch (err) {
+    console.error("❌ Refresh failed:", err);
     return res.sendStatus(401);
   }
 });
@@ -170,7 +185,7 @@ app.get("/api/auth/me", async (req, res) => {
       permissions: userWithPermissions.permissions,
     });
   } catch (err) {
-    console.error("❌ Error loading user permissions:", err);
+    console.error("❌ Error loading user:", err);
     return res.status(500).json({ message: "Failed to load user." });
   }
 });
@@ -186,7 +201,7 @@ app.post("/auth/logout", (req, res) => {
     .sendStatus(200);
 });
 
-// --- Modular API Routes ---
+// --- Routes ---
 app.use("/api/roles", roleRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/sites", siteRoutes);
@@ -197,3 +212,5 @@ app.use("/api/metadata", metadataRoutes);
 app.listen(3000, () => {
   console.log("🚀 Backend running on http://localhost:3000");
 });
+
+// ---ENSURE TO STRIP OUT NON-DEV LOGGING PRIOR TO PROD--

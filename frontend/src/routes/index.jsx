@@ -16,6 +16,11 @@ export default function AppRoutes() {
 
   useEffect(() => {
     const fetchUser = async () => {
+      if (location.pathname === "/login") {
+        setLoading(false); // ✅ Skip check when already on login screen
+        return;
+      }
+
       try {
         const res = await fetch('/auth/refresh', { credentials: 'include' });
         if (!res.ok) throw new Error('Not authenticated');
@@ -29,7 +34,7 @@ export default function AppRoutes() {
     };
 
     fetchUser();
-  }, [setUserContext]);
+  }, [setUserContext, location.pathname]);
 
   if (loading) {
     return <div className="text-center py-10 text-gray-500">Loading...</div>;

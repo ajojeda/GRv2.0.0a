@@ -1,3 +1,4 @@
+// frontend/src/pages/Login/Login.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../context/PermissionsContext';
@@ -15,18 +16,35 @@ export default function Login() {
     setError(null);
     setLoading(true);
 
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    console.log("📨 Sending login request to /auth/login", { email: trimmedEmail, password: trimmedPassword });
+    console.log("🧪 FINAL PAYLOAD SENT:", JSON.stringify({ email: trimmedEmail, password: trimmedPassword }));
+
     try {
-      const res = await fetch('/auth/login', {
+      const res = await fetch('http://localhost:3000/auth/login', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), password })
       });
 
-      if (!res.ok) throw new Error('Invalid credentials');
-      const data = await res.json();
+      console.log("📥 Response status:", res.status);
+      const contentType = res.headers.get('content-type');
 
-      if (!data?.user) throw new Error('Malformed response');
+      if (!res.ok) {
+        if (contentType?.includes('application/json')) {
+          const { message } = await res.json();
+          throw new Error(message || 'Invalid credentials');
+        } else {
+          throw new Error('Invalid credentials');
+        }
+      }
+
+      const data = await res.json();
+      console.log("✅ Login response data:", data);
+
+      if (!data?.user) throw new Error('Malformed response from server');
       setUserContext(data.user, data.permissions);
       navigate('/');
     } catch (err) {

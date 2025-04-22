@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const PermissionsContext = createContext();
 
@@ -7,8 +8,8 @@ export function PermissionsProvider({ children }) {
   const [user, setUser] = useState(null);
   const [siteAccess, setSiteAccess] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
+  const location = useLocation();
 
-  // 🧠 Full sysAdmin fallback
   const getSysAdminPermissions = () => ({
     Dashboard: { visible: true, actions: {} },
     "User Management": {
@@ -46,11 +47,12 @@ export function PermissionsProvider({ children }) {
 
   useEffect(() => {
     const fetchPermissions = async () => {
+      if (location.pathname === "/login") return; // ✅ skip on login page
+
       try {
         const res = await fetch('/api/auth/me', { credentials: 'include' });
         if (!res.ok) throw new Error('Not authorized');
         const data = await res.json();
-
         setUserContext(data.user, data.permissions);
       } catch (err) {
         console.error('Failed to load user permissions:', err);
@@ -62,7 +64,7 @@ export function PermissionsProvider({ children }) {
     };
 
     fetchPermissions();
-  }, []);
+  }, [location.pathname]);
 
   const canAccess = (resource) => {
     return permissions?.[resource]?.visible === true;
