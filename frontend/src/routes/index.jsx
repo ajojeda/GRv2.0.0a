@@ -7,6 +7,7 @@ import Users from '../pages/Users/Users';
 import Roles from '../pages/Roles/Roles';
 import Sites from '../pages/Sites/Sites';
 import Login from '../pages/Login/Login';
+import TestTailwind from '../pages/TestTailwind';
 
 export default function AppRoutes() {
   const { user, loading } = usePermissions();
@@ -26,6 +27,7 @@ export default function AppRoutes() {
         <Route path="sites" element={<Sites />} />
       </Route>
       <Route path="*" element={<Navigate to={isAuthed ? '/' : '/login'} replace />} />
+      <Route path="/test" element={<TestTailwind />} />
     </Routes>
   );
 }
