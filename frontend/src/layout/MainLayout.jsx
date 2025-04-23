@@ -1,22 +1,78 @@
+// frontend/src/layout/MainLayout.jsx
+import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import SiteSwitcher from '../components/SiteSwitcher';
+import Topbar from './Topbar';
 
 export default function MainLayout() {
-  return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col bg-gray-50 overflow-y-auto">
-        {/* Top Header Bar */}
-        <div className="flex items-center justify-between p-4 border-b bg-white shadow-sm">
-          <h1 className="text-lg font-semibold text-gray-800">GoodieRun Admin</h1>
-          <SiteSwitcher />
-        </div>
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
-        {/* Main Content */}
-        <div className="p-6 flex-1">
+  useEffect(() => {
+    const storedState = localStorage.getItem('sidebarOpen');
+    if (storedState !== null) {
+      setSidebarOpen(storedState === 'true');
+    }
+
+    const handleResize = () => {
+      const isNowMobile = window.innerWidth < 768;
+      setIsMobile(isNowMobile);
+
+      if (isNowMobile) {
+        setSidebarOpen(false); // collapse on mobile by default
+      }
+    };
+
+    handleResize(); // run once on mount
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const toggleSidebar = () => {
+    const newState = !sidebarOpen;
+    setSidebarOpen(newState);
+    localStorage.setItem('sidebarOpen', newState.toString());
+  };
+
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    localStorage.setItem('sidebarOpen', 'false');
+  };
+
+  return (
+    <div className="flex h-screen bg-gray-100 relative overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        toggleSidebar={toggleSidebar}
+        isMobile={isMobile}
+        closeSidebar={closeSidebar}
+      />
+
+      {/* Mobile Backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black bg-opacity-50 transition-opacity"
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Main Panel */}
+      <div
+        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
+          isMobile
+            ? sidebarOpen
+              ? 'translate-x-64'
+              : 'translate-x-0'
+            : sidebarOpen
+            ? 'ml-64'
+            : 'ml-16'
+        }`}
+      >
+        <Topbar toggleSidebar={toggleSidebar} />
+        <main className="flex-1 p-4 overflow-auto">
           <Outlet />
-        </div>
+        </main>
       </div>
     </div>
   );

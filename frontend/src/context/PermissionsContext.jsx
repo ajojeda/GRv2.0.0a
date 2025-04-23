@@ -47,15 +47,18 @@ export function PermissionsProvider({ children }) {
 
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (location.pathname === "/login") return; // ✅ skip on login page
+      if (location.pathname === "/login") return;
 
       try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' });
-        if (!res.ok) throw new Error('Not authorized');
+        const res = await fetch('/auth/refresh', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error('Unauthorized');
         const data = await res.json();
         setUserContext(data.user, data.permissions);
       } catch (err) {
-        console.error('Failed to load user permissions:', err);
+        console.error('🔐 Auth refresh failed:', err);
         setUser(null);
         setPermissions({});
         setSiteAccess([]);

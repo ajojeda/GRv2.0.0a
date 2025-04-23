@@ -1,45 +1,59 @@
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const usersFile = path.join(__dirname, "../data/mock/users.json");
+// backend/controllers/userController.js
+import sql from "mssql";
+import getDbConnection from "../utils/db.js";
 
 // GET /api/users
 export async function getAllUsers(req, res) {
   const currentUser = req.user;
 
   try {
-    const data = await fs.readFile(usersFile, "utf8");
-    const users = JSON.parse(data);
+    const pool = await getDbConnection();
+    const result = await pool.request().query(`
+      SELECT id, email, name, sysAdmin, siteAdmin, siteId, siteAccess, allSites
+      FROM Users
+    `);
 
-    let visibleUsers;
+    let users = result.recordset.map((user) => ({
+      ...user,
+      siteAccess: user.siteAccess ? JSON.parse(user.siteAccess) : [],
+    }));
 
     if (currentUser?.sysAdmin) {
-      visibleUsers = users;
+      // See all users
     } else if (Array.isArray(currentUser?.siteAccess) && currentUser.siteAccess.length) {
-      visibleUsers = users.filter((u) => currentUser.siteAccess.includes(u.siteId));
+      users = users.filter((u) => currentUser.siteAccess.includes(u.siteId));
     } else if (currentUser?.siteId) {
-      visibleUsers = users.filter((u) => u.siteId === currentUser.siteId);
+      users = users.filter((u) => u.siteId === currentUser.siteId);
     } else {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    res.json(visibleUsers);
+    res.json(users);
   } catch (err) {
-    console.error("❌ Failed to load users:", err);
+    console.error("❌ Failed to fetch users:", err);
     res.status(500).json({ message: "Error loading users" });
   }
 }
 
 // GET /api/users/:id
 export async function getUser(req, res) {
+  const userId = parseInt(req.params.id);
+
   try {
-    const data = await fs.readFile(usersFile, "utf8");
-    const users = JSON.parse(data);
-    const user = users.find((u) => u.id === parseInt(req.params.id));
+    const pool = await getDbConnection();
+    const result = await pool
+      .request()
+      .input("id", sql.Int, userId)
+      .query(`
+        SELECT id, email, name, sysAdmin, siteAdmin, siteId, siteAccess, allSites
+        FROM Users
+        WHERE id = @id
+      `);
+
+    const user = result.recordset[0];
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    user.siteAccess = user.siteAccess ? JSON.parse(user.siteAccess) : [];
     res.json(user);
   } catch (err) {
     console.error("❌ Failed to load user:", err);
@@ -56,7 +70,6 @@ export async function createUser(req, res) {
     return res.status(400).json({ message: "Missing fields" });
   }
 
-  // ⛔ Enforce siteId creation permissions
   const isAllowed =
     currentUser?.sysAdmin ||
     currentUser?.siteAccess?.includes(siteId) ||
@@ -67,21 +80,21 @@ export async function createUser(req, res) {
   }
 
   try {
-    const data = await fs.readFile(usersFile, "utf8");
-    const users = JSON.parse(data);
+    const pool = await getDbConnection();
+    const result = await pool
+      .request()
+      .input("email", sql.NVarChar, email)
+      .input("name", sql.NVarChar, name)
+      .input("siteId", sql.Int, siteId)
+      .query(`
+        INSERT INTO Users (email, name, siteId, sysAdmin, siteAdmin, siteAccess)
+        OUTPUT INSERTED.*
+        VALUES (@email, @name, @siteId, 0, 0, '[]')
+      `);
 
-    const newUser = {
-      id: Date.now(),
-      email,
-      name,
-      siteId,
-      role: "Standard User",
-      sysAdmin: false,
-      siteAccess: [],
-    };
+    const newUser = result.recordset[0];
+    newUser.siteAccess = [];
 
-    users.push(newUser);
-    await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
     res.status(201).json(newUser);
   } catch (err) {
     console.error("❌ Failed to create user:", err);
@@ -92,21 +105,33 @@ export async function createUser(req, res) {
 // PUT /api/users/:id
 export async function updateUser(req, res) {
   const userId = parseInt(req.params.id);
-  const updates = req.body;
+  const { email, name, siteId, sysAdmin, siteAdmin, siteAccess, allSites } = req.body;
 
   try {
-    const data = await fs.readFile(usersFile, "utf8");
-    const users = JSON.parse(data);
-    const index = users.findIndex((u) => u.id === userId);
+    const pool = await getDbConnection();
+    await pool
+      .request()
+      .input("id", sql.Int, userId)
+      .input("email", sql.NVarChar, email)
+      .input("name", sql.NVarChar, name)
+      .input("siteId", sql.Int, siteId)
+      .input("sysAdmin", sql.Bit, sysAdmin || false)
+      .input("siteAdmin", sql.Bit, siteAdmin || false)
+      .input("siteAccess", sql.NVarChar, JSON.stringify(siteAccess || []))
+      .input("allSites", sql.Bit, allSites || false)
+      .query(`
+        UPDATE Users
+        SET email = @email,
+            name = @name,
+            siteId = @siteId,
+            sysAdmin = @sysAdmin,
+            siteAdmin = @siteAdmin,
+            siteAccess = @siteAccess,
+            allSites = @allSites
+        WHERE id = @id
+      `);
 
-    if (index === -1) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    users[index] = { ...users[index], ...updates };
-    await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
-
-    res.json(users[index]);
+    res.sendStatus(204);
   } catch (err) {
     console.error("❌ Failed to update user:", err);
     res.status(500).json({ message: "Error updating user" });
@@ -118,11 +143,8 @@ export async function deleteUser(req, res) {
   const userId = parseInt(req.params.id);
 
   try {
-    const data = await fs.readFile(usersFile, "utf8");
-    let users = JSON.parse(data);
-    users = users.filter((u) => u.id !== userId);
-
-    await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
+    const pool = await getDbConnection();
+    await pool.request().input("id", sql.Int, userId).query("DELETE FROM Users WHERE id = @id");
     res.sendStatus(204);
   } catch (err) {
     console.error("❌ Failed to delete user:", err);

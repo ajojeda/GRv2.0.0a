@@ -1,68 +1,89 @@
-// frontend/src/components/Sidebar.jsx
-import { NavLink, useNavigate } from 'react-router-dom';
+// frontend/src/layout/Sidebar.jsx
+import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { usePermissions } from '../context/PermissionsContext';
+import { FaBars, FaUser, FaUsers, FaCog, FaHome } from 'react-icons/fa';
 
-const allLinks = [
-  { name: 'Dashboard', to: '/', resource: 'Dashboard' },
-  { name: 'Users', to: '/users', resource: 'User Management' },
-  { name: 'Roles', to: '/roles', resource: 'Role Management' },
-  { name: 'Sites', to: '/sites', resource: 'Site Management' },
+const menuItems = [
+  {
+    key: 'Dashboard',
+    label: 'Dashboard',
+    icon: <FaHome />,
+    path: '/',
+  },
+  {
+    key: 'User Management',
+    label: 'Users',
+    icon: <FaUsers />,
+    path: '/users',
+  },
+  {
+    key: 'Role Management',
+    label: 'Roles',
+    icon: <FaCog />,
+    path: '/roles',
+  },
+  {
+    key: 'Site Management',
+    label: 'Sites',
+    icon: <FaUser />,
+    path: '/sites',
+  },
 ];
 
-export default function Sidebar() {
-  const { user, canAccess, setUserContext } = usePermissions();
-  const navigate = useNavigate();
+export default function Sidebar({ isOpen, toggleSidebar, isMobile, closeSidebar }) {
+  const location = useLocation();
+  const { canAccess } = usePermissions();
+  const [search, setSearch] = useState('');
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (err) {
-      console.warn('Logout failed silently:', err);
-    } finally {
-      setUserContext(null, {}); // Clear context
-      navigate('/login');
-    }
-  };
+  const filteredMenu = menuItems.filter(
+    (item) => canAccess(item.key) && item.label.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
-    <aside className="w-64 bg-white shadow-md h-full">
-      <div className="p-4 text-xl font-bold border-b">GoodieRun</div>
+    <div
+      className={`fixed top-0 left-0 z-40 h-screen bg-[#2C2C2C] text-[#E0E0E0] shadow-lg transition-all duration-300 ease-in-out
+        ${isOpen ? 'w-64' : 'w-16'}
+        ${isMobile ? 'translate-x-0' : ''}
+      `}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-[#3A3A3A]">
+        <button onClick={toggleSidebar} className="text-[#E0E0E0] focus:outline-none">
+          <FaBars />
+        </button>
+        {isOpen && <span className="font-bold ml-2">GoodieRun</span>}
+      </div>
 
-      {user && (
-        <div className="text-sm text-gray-600 p-4 border-b">
-          Signed in as <strong>{user.name}</strong>
-          <br />
-          Role: {user.sysAdmin ? 'System Admin' : user.role || 'User'}
+      {/* Search Bar */}
+      {isOpen && (
+        <div className="px-4 py-2">
+          <input
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-1 text-sm rounded bg-[#3A3A3A] placeholder-gray-400"
+          />
         </div>
       )}
 
-      <nav className="p-4">
-        {allLinks
-          .filter(link => canAccess(link.resource))
-          .map(link => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) =>
-                `block py-2 px-4 rounded hover:bg-gray-100 ${isActive ? 'bg-gray-200 font-semibold' : ''}`
-              }
-            >
-              {link.name}
-            </NavLink>
+      {/* Navigation */}
+      <nav className="mt-4 space-y-1">
+        {filteredMenu.map((item) => (
+          <Link
+            key={item.key}
+            to={item.path}
+            onClick={isMobile ? closeSidebar : undefined}
+            className={`flex items-center px-4 py-2 hover:bg-[#404040] transition-colors ${
+              location.pathname === item.path ? 'bg-[#444] font-semibold' : ''
+            }`}
+          >
+            <span className="text-lg">{item.icon}</span>
+            {isOpen && <span className="ml-3">{item.label}</span>}
+          </Link>
         ))}
       </nav>
-
-      <div className="p-4 border-t">
-        <button
-          onClick={handleLogout}
-          className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600"
-        >
-          Sign Out
-        </button>
-      </div>
-    </aside>
+    </div>
   );
 }
