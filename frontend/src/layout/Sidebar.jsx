@@ -5,30 +5,10 @@ import { usePermissions } from '../context/PermissionsContext';
 import { FaBars, FaUser, FaUsers, FaCog, FaHome } from 'react-icons/fa';
 
 const menuItems = [
-  {
-    key: 'Dashboard',
-    label: 'Dashboard',
-    icon: <FaHome />,
-    path: '/',
-  },
-  {
-    key: 'User Management',
-    label: 'Users',
-    icon: <FaUsers />,
-    path: '/users',
-  },
-  {
-    key: 'Role Management',
-    label: 'Roles',
-    icon: <FaCog />,
-    path: '/roles',
-  },
-  {
-    key: 'Site Management',
-    label: 'Sites',
-    icon: <FaUser />,
-    path: '/sites',
-  },
+  { key: 'Dashboard', label: 'Dashboard', icon: <FaHome />, path: '/' },
+  { key: 'User Management', label: 'Users', icon: <FaUsers />, path: '/users' },
+  { key: 'Role Management', label: 'Roles', icon: <FaCog />, path: '/roles' },
+  { key: 'Site Management', label: 'Sites', icon: <FaUser />, path: '/sites' },
 ];
 
 export default function Sidebar({ isOpen, toggleSidebar, isMobile, closeSidebar }) {
@@ -41,49 +21,61 @@ export default function Sidebar({ isOpen, toggleSidebar, isMobile, closeSidebar 
   );
 
   return (
-    <div
-      className={`fixed top-0 left-0 z-40 h-screen bg-[#2C2C2C] text-[#E0E0E0] shadow-lg transition-all duration-300 ease-in-out
+    <aside
+      className={`fixed top-0 left-0 z-40 h-full bg-[#2C2C2C] text-white shadow-md flex flex-col transition-all duration-300 ease-in-out
         ${isOpen ? 'w-64' : 'w-16'}
-        ${isMobile ? 'translate-x-0' : ''}
+        ${isMobile && !isOpen ? '-translate-x-full' : 'translate-x-0'}
       `}
+      aria-label="Sidebar Navigation"
     >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-[#3A3A3A]">
-        <button onClick={toggleSidebar} className="text-[#E0E0E0] focus:outline-none">
+      {/* Top Bar: Toggle & Brand */}
+      <div className="flex items-center justify-between px-4 py-4 border-b border-[#3A3A3A]">
+        <button
+          onClick={toggleSidebar}
+          aria-label="Toggle sidebar"
+          className="text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded"
+        >
           <FaBars />
         </button>
-        {isOpen && <span className="font-bold ml-2">GoodieRun</span>}
+        {isOpen && (
+          <span className="ml-2 text-sm font-semibold truncate">GoodieRun</span>
+        )}
       </div>
 
-      {/* Search Bar */}
+      {/* Search */}
       {isOpen && (
-        <div className="px-4 py-2">
+        <div className="px-4 py-3 border-b border-[#3A3A3A]">
           <input
             type="text"
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-1 text-sm rounded bg-[#3A3A3A] placeholder-gray-400"
+            className="w-full px-3 py-2 text-sm bg-[#3A3A3A] text-white rounded-md placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            aria-label="Search navigation"
           />
         </div>
       )}
 
       {/* Navigation */}
-      <nav className="mt-4 space-y-1">
-        {filteredMenu.map((item) => (
-          <Link
-            key={item.key}
-            to={item.path}
-            onClick={isMobile ? closeSidebar : undefined}
-            className={`flex items-center px-4 py-2 hover:bg-[#404040] transition-colors ${
-              location.pathname === item.path ? 'bg-[#444] font-semibold' : ''
-            }`}
-          >
-            <span className="text-lg">{item.icon}</span>
-            {isOpen && <span className="ml-3">{item.label}</span>}
-          </Link>
-        ))}
+      <nav className="flex-1 px-2 pt-4 overflow-y-auto space-y-1">
+        {filteredMenu.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.key}
+              to={item.path}
+              onClick={isMobile ? closeSidebar : undefined}
+              className={`group flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150
+                ${isActive ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-[#404040] hover:text-white'}
+              `}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <span className="text-base">{item.icon}</span>
+              {isOpen && <span className="ml-3 truncate">{item.label}</span>}
+            </Link>
+          );
+        })}
       </nav>
-    </div>
+    </aside>
   );
 }

@@ -9,29 +9,26 @@ export default function MainLayout() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const storedState = localStorage.getItem('sidebarOpen');
-    if (storedState !== null) {
-      setSidebarOpen(storedState === 'true');
+    const stored = localStorage.getItem('sidebarOpen');
+    if (stored !== null) {
+      setSidebarOpen(stored === 'true');
     }
 
     const handleResize = () => {
-      const isNowMobile = window.innerWidth < 768;
-      setIsMobile(isNowMobile);
-
-      if (isNowMobile) {
-        setSidebarOpen(false); // collapse on mobile by default
-      }
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
     };
 
-    handleResize(); // run once on mount
+    handleResize(); // initial
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const toggleSidebar = () => {
-    const newState = !sidebarOpen;
-    setSidebarOpen(newState);
-    localStorage.setItem('sidebarOpen', newState.toString());
+    const next = !sidebarOpen;
+    setSidebarOpen(next);
+    localStorage.setItem('sidebarOpen', next.toString());
   };
 
   const closeSidebar = () => {
@@ -40,7 +37,7 @@ export default function MainLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100 relative overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#F8F8F8] text-gray-900">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -49,29 +46,25 @@ export default function MainLayout() {
         closeSidebar={closeSidebar}
       />
 
-      {/* Mobile Backdrop */}
+      {/* Backdrop */}
       {isMobile && sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black bg-opacity-50 transition-opacity"
+          className="fixed inset-0 z-30 bg-black bg-opacity-50"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Main Panel */}
+      {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${
-          isMobile
-            ? sidebarOpen
-              ? 'translate-x-64'
-              : 'translate-x-0'
-            : sidebarOpen
-            ? 'ml-64'
-            : 'ml-16'
-        }`}
+        className={`flex flex-col flex-1 min-h-screen transform transition-transform duration-300 ease-in-out
+          ${isMobile ? (sidebarOpen ? 'translate-x-64' : '') : sidebarOpen ? 'ml-64' : 'ml-16'}
+        `}
       >
         <Topbar toggleSidebar={toggleSidebar} />
-        <main className="flex-1 p-4 overflow-auto">
-          <Outlet />
+        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8 bg-[#F8F8F8] overflow-y-auto">
+          <div className="max-w-screen-xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

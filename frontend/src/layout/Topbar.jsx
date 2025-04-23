@@ -1,4 +1,3 @@
-// frontend/src/layout/Topbar.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../context/PermissionsContext';
@@ -36,52 +35,60 @@ export default function Topbar({ toggleSidebar }) {
   }, []);
 
   return (
-    <header className="flex items-center justify-between bg-white shadow px-4 py-2 border-b border-gray-200 z-10">
-      {/* Left: Title + Mobile Sidebar Toggle */}
+    <header className="sticky top-0 z-30 flex items-center justify-between h-16 bg-white border-b border-gray-200 shadow-sm px-4">
+      {/* Sidebar Toggle + Brand */}
       <div className="flex items-center gap-4">
-        <button onClick={toggleSidebar} className="lg:hidden text-gray-600 hover:text-gray-800">
-          <FaBars />
+        <button
+          onClick={toggleSidebar}
+          className="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
+          aria-label="Toggle Sidebar"
+        >
+          <FaBars size={18} />
         </button>
-        <h1 className="text-lg font-semibold text-gray-700">GoodieRun</h1>
+        <span className="text-lg font-semibold text-gray-800 tracking-tight">
+          GoodieRun
+        </span>
       </div>
 
-      {/* Right: User Menu */}
-      <div className="relative flex items-center gap-4">
-        {/* Notifications */}
+      {/* Notifications & User Menu */}
+      <div className="flex items-center gap-4 relative">
+        {/* 🔔 Notifications */}
         <button
-          className="text-gray-500 hover:text-gray-700 transition"
           title="Notifications"
+          aria-label="Notifications"
+          className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition"
         >
           <span className="material-symbols-outlined">notifications</span>
         </button>
 
-        {/* User Dropdown */}
+        {/* 👤 User Dropdown */}
         <div className="relative" ref={menuRef}>
           <button
-            onClick={() => setMenuOpen((prev) => !prev)}
-            className="flex items-center text-gray-600 hover:text-gray-800"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition"
+            aria-label="User Menu"
           >
             <span className="material-symbols-outlined">account_circle</span>
-            <span className="ml-1 hidden sm:inline">
+            <span className="hidden sm:inline font-medium truncate max-w-[120px]">
               {user?.name || user?.email || 'User'}
             </span>
-            <span className="material-symbols-outlined ml-1">expand_more</span>
+            <span className="material-symbols-outlined">expand_more</span>
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 overflow-hidden">
               <button
                 onClick={() => {
                   setMenuOpen(false);
                   navigate('/profile');
                 }}
-                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition"
               >
                 My Profile
               </button>
               <button
                 onClick={handleLogout}
-                className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 transition"
               >
                 Log Out
               </button>
