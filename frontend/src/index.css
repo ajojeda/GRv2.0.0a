@@ -1,8 +1,4 @@
+/* frontend/src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* DEBUG TEST */
-body {
-  @apply bg-slate-200 text-gray-800;
-}
