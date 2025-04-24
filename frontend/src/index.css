@@ -1,3 +1,10 @@
+@layer base {
+  html {
+    border: 10px solid red;
+  }
+}
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
