@@ -1,6 +1,6 @@
-// backend/services/PermissionService.js
+// 📁 backend/services/PermissionService.js
 import sql from "mssql";
-import getDbConnection from "../utils/db.js"; // ✅ use default import
+import { getDbConnection } from "../utils/db.js"; // ✅ Fix: use named import!
 
 // Aggregate all permissions assigned to a user across all their security groups
 export async function getUserPermissions(userId) {

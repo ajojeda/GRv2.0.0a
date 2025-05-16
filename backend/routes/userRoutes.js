@@ -1,18 +1,17 @@
-import express from "express";
+// 📁 backend/routes/userRoutes.js
+import express from 'express';
 import {
   getAllUsers,
-  getUser,
   createUser,
   updateUser,
   deleteUser,
-} from "../controllers/userController.js";
+} from '../controllers/userController.js';
 
 const router = express.Router();
 
-router.get("/", getAllUsers);
-router.get("/:id", getUser);
-router.post("/", createUser);
-router.put("/:id", updateUser);
-router.delete("/:id", deleteUser);
+router.get('/', getAllUsers);
+router.post('/', createUser);
+router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 
 export default router;

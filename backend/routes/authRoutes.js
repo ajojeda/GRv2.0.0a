@@ -1,22 +1,16 @@
-const express = require('express');
+// 📁 backend/routes/authRoutes.js
+import express from 'express';
+import { login, refreshSession, logout } from '../controllers/authController.js';
+
 const router = express.Router();
 
-// Simulated user info & permissions (replace with real logic later)
-router.get('/me', (req, res) => {
-  res.json({
-    user: {
-      id: 1,
-      name: 'AJ Ojeda',
-      role: 'sysAdmin',
-      site: 'Seattle HQ'
-    },
-    permissions: [
-      'dashboard.view',
-      'users.view',
-      'roles.view',
-      'roles.edit'
-    ]
-  });
-});
+// Login route
+router.post('/login', login);
 
-module.exports = router;
+// Refresh session route
+router.post('/refresh', refreshSession);
+
+// Logout route
+router.post('/logout', logout);
+
+export default router;

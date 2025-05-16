@@ -1,153 +1,113 @@
-// backend/controllers/userController.js
-import sql from "mssql";
-import getDbConnection from "../utils/db.js";
+// 📁 backend/controllers/userController.js
+import sql from 'mssql';
+import poolPromise from '../utils/db.js';
 
-// GET /api/users
 export async function getAllUsers(req, res) {
-  const currentUser = req.user;
-
   try {
-    const pool = await getDbConnection();
-    const result = await pool.request().query(`
-      SELECT id, email, name, sysAdmin, siteAdmin, siteId, siteAccess, allSites
-      FROM Users
-    `);
+    const pool = await poolPromise;
+    const result = await pool.request()
+      .query(`
+        SELECT 
+          u.id, 
+          u.name, 
+          u.email,
+          MAX(r.name) AS roleName
+        FROM Users u
+        LEFT JOIN UserRoles ur ON u.id = ur.userId
+        LEFT JOIN Roles r ON ur.roleId = r.id
+        WHERE u.deletedAt IS NULL
+        GROUP BY u.id, u.name, u.email
+      `);
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+}
 
-    let users = result.recordset.map((user) => ({
-      ...user,
-      siteAccess: user.siteAccess ? JSON.parse(user.siteAccess) : [],
-    }));
+export async function createUser(req, res) {
+  try {
+    const { name, email, password, roleId } = req.body;
+    const pool = await poolPromise;
 
-    if (currentUser?.sysAdmin) {
-      // See all users
-    } else if (Array.isArray(currentUser?.siteAccess) && currentUser.siteAccess.length) {
-      users = users.filter((u) => currentUser.siteAccess.includes(u.siteId));
-    } else if (currentUser?.siteId) {
-      users = users.filter((u) => u.siteId === currentUser.siteId);
-    } else {
-      return res.status(403).json({ message: "Access denied" });
+    const userResult = await pool.request()
+      .input('name', sql.NVarChar, name)
+      .input('email', sql.NVarChar, email)
+      .input('password', sql.NVarChar, password)
+      .query(`
+        INSERT INTO Users (name, email, password)
+        OUTPUT INSERTED.id
+        VALUES (@name, @email, @password)
+      `);
+
+    const userId = userResult.recordset[0].id;
+
+    if (roleId) {
+      await pool.request()
+        .input('userId', sql.Int, userId)
+        .input('roleId', sql.Int, roleId)
+        .query('INSERT INTO UserRoles (userId, roleId) VALUES (@userId, @roleId)');
     }
 
-    res.json(users);
-  } catch (err) {
-    console.error("❌ Failed to fetch users:", err);
-    res.status(500).json({ message: "Error loading users" });
+    res.status(201).json({ message: 'User created' });
+  } catch (error) {
+    console.error('Error creating user:', error);
+    res.status(500).json({ message: 'Failed to create user' });
   }
 }
 
-// GET /api/users/:id
-export async function getUser(req, res) {
-  const userId = parseInt(req.params.id);
-
+export async function updateUser(req, res) {
   try {
-    const pool = await getDbConnection();
-    const result = await pool
-      .request()
-      .input("id", sql.Int, userId)
+    const { id } = req.params;
+    const { name, email, roleId } = req.body;
+    const pool = await poolPromise;
+
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('name', sql.NVarChar, name)
+      .input('email', sql.NVarChar, email)
       .query(`
-        SELECT id, email, name, sysAdmin, siteAdmin, siteId, siteAccess, allSites
-        FROM Users
+        UPDATE Users 
+        SET name = @name, email = @email, updatedAt = GETDATE()
         WHERE id = @id
       `);
 
-    const user = result.recordset[0];
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (roleId) {
+      await pool.request()
+        .input('userId', sql.Int, id)
+        .query('DELETE FROM UserRoles WHERE userId = @userId');
 
-    user.siteAccess = user.siteAccess ? JSON.parse(user.siteAccess) : [];
-    res.json(user);
-  } catch (err) {
-    console.error("❌ Failed to load user:", err);
-    res.status(500).json({ message: "Error loading user" });
+      await pool.request()
+        .input('userId', sql.Int, id)
+        .input('roleId', sql.Int, roleId)
+        .query('INSERT INTO UserRoles (userId, roleId) VALUES (@userId, @roleId)');
+    }
+
+    res.status(200).json({ message: 'User updated' });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Failed to update user' });
   }
 }
 
-// POST /api/users
-export async function createUser(req, res) {
-  const currentUser = req.user;
-  const { email, name, siteId } = req.body;
-
-  if (!email || !name || !siteId) {
-    return res.status(400).json({ message: "Missing fields" });
-  }
-
-  const isAllowed =
-    currentUser?.sysAdmin ||
-    currentUser?.siteAccess?.includes(siteId) ||
-    currentUser?.siteId === siteId;
-
-  if (!isAllowed) {
-    return res.status(403).json({ message: "You cannot create users at this site." });
-  }
-
+export async function deleteUser(req, res) {
   try {
-    const pool = await getDbConnection();
-    const result = await pool
-      .request()
-      .input("email", sql.NVarChar, email)
-      .input("name", sql.NVarChar, name)
-      .input("siteId", sql.Int, siteId)
-      .query(`
-        INSERT INTO Users (email, name, siteId, sysAdmin, siteAdmin, siteAccess)
-        OUTPUT INSERTED.*
-        VALUES (@email, @name, @siteId, 0, 0, '[]')
-      `);
+    const { id } = req.params;
+    const { deletedBy } = req.body;
+    const pool = await poolPromise;
 
-    const newUser = result.recordset[0];
-    newUser.siteAccess = [];
-
-    res.status(201).json(newUser);
-  } catch (err) {
-    console.error("❌ Failed to create user:", err);
-    res.status(500).json({ message: "Error creating user" });
-  }
-}
-
-// PUT /api/users/:id
-export async function updateUser(req, res) {
-  const userId = parseInt(req.params.id);
-  const { email, name, siteId, sysAdmin, siteAdmin, siteAccess, allSites } = req.body;
-
-  try {
-    const pool = await getDbConnection();
-    await pool
-      .request()
-      .input("id", sql.Int, userId)
-      .input("email", sql.NVarChar, email)
-      .input("name", sql.NVarChar, name)
-      .input("siteId", sql.Int, siteId)
-      .input("sysAdmin", sql.Bit, sysAdmin || false)
-      .input("siteAdmin", sql.Bit, siteAdmin || false)
-      .input("siteAccess", sql.NVarChar, JSON.stringify(siteAccess || []))
-      .input("allSites", sql.Bit, allSites || false)
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('deletedBy', sql.Int, deletedBy)
       .query(`
         UPDATE Users
-        SET email = @email,
-            name = @name,
-            siteId = @siteId,
-            sysAdmin = @sysAdmin,
-            siteAdmin = @siteAdmin,
-            siteAccess = @siteAccess,
-            allSites = @allSites
+        SET deletedAt = GETDATE(), deletedBy = @deletedBy
         WHERE id = @id
       `);
 
-    res.sendStatus(204);
-  } catch (err) {
-    console.error("❌ Failed to update user:", err);
-    res.status(500).json({ message: "Error updating user" });
-  }
-}
-
-// DELETE /api/users/:id
-export async function deleteUser(req, res) {
-  const userId = parseInt(req.params.id);
-
-  try {
-    const pool = await getDbConnection();
-    await pool.request().input("id", sql.Int, userId).query("DELETE FROM Users WHERE id = @id");
-    res.sendStatus(204);
-  } catch (err) {
-    console.error("❌ Failed to delete user:", err);
-    res.status(500).json({ message: "Error deleting user" });
+    res.status(200).json({ message: 'User soft deleted' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Failed to delete user' });
   }
 }
